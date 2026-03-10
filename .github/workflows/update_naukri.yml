@@ -20,16 +20,11 @@ on:
 
 jobs:
   update-resume:
-    runs-on: ubuntu-latest  # GitHub-hosted cloud runner (free)
+    runs-on: self-hosted  # Must run on YOUR PC — Naukri blocks all cloud/datacenter IPs
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
 
       - name: Install dependencies
         run: pip install -r requirements.txt
