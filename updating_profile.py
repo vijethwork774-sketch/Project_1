@@ -83,13 +83,20 @@ def run(playwright: Playwright) -> None:
     # Hide webdriver property to avoid bot detection
     page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
-    # 1. Go to login page and wait for full network idle
-    page.goto("https://www.naukri.com/nlogin/login", wait_until="networkidle", timeout=30000)
+    # 1. Go to login page
+    page.goto("https://www.naukri.com/nlogin/login", wait_until="domcontentloaded", timeout=30000)
+    page.wait_for_timeout(3000)  # wait for JS to render login form
+
+    # Take screenshot to debug what CI sees
+    page.screenshot(path="login_page.png")
+    print(f"📸 Screenshot saved: login_page.png")
+    print(f"🌐 Current URL: {page.url}")
 
     # 2. Wait for email field then fill credentials
-    email_input = page.locator("input[placeholder*='Email'], input[type='email']").first
+    email_input = page.locator("input[placeholder*='Email'], input[type='email'], input[name*='email'], input[id*='email']").first
     email_input.wait_for(state="visible", timeout=30000)
     email_input.fill(NAUKRI_EMAIL)
+
 
     password_input = page.locator("input[placeholder*='Password'], input[type='password']").first
     password_input.wait_for(state="visible", timeout=15000)
