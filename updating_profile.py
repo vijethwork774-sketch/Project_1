@@ -4,6 +4,11 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from playwright.sync_api import Playwright, sync_playwright
+from dotenv import load_dotenv
+
+# Load .env file for local development (ignored in GitHub Actions)
+load_dotenv()
+
 
 # Read credentials from environment variables (set via GitHub Secrets)
 NAUKRI_EMAIL    = os.environ["NAUKRI_EMAIL"]
@@ -14,7 +19,7 @@ GMAIL_USER     = os.environ["GMAIL_USER"]
 GMAIL_APP_PASS = os.environ["GMAIL_APP_PASSWORD"]
 
 # Resume path — relative to repo root (place your PDF as resume/resume.pdf in the repo)
-RESUME_PATH = os.path.join(os.path.dirname(__file__), "resume", "resume.pdf")
+RESUME_PATH = os.path.join(os.path.dirname(__file__), "Vijeth E_Resume2.pdf")
 
 
 def send_email(success: bool, detail: str = ""):
@@ -49,8 +54,12 @@ def send_email(success: bool, detail: str = ""):
 
 
 def run(playwright: Playwright) -> None:
-    # headless=True is required for GitHub Actions (no display)
-    browser = playwright.chromium.launch(headless=True)
+    # Auto-detect: headless in GitHub Actions (CI=true), visible locally
+    is_ci = os.environ.get("CI", "false").lower() == "true"
+    browser = playwright.chromium.launch(
+        headless=is_ci,
+        slow_mo=0 if is_ci else 500  # slow_mo helps you see what's happening locally
+    )
     context = browser.new_context()
     page = context.new_page()
 
