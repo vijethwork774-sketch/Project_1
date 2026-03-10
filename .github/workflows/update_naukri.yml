@@ -1,6 +1,11 @@
 name: Update Naukri Resume
 
 on:
+  # Trigger on every push to master branch
+  push:
+    branches:
+      - master
+
   schedule:
     # Runs 3 times daily in IST (UTC+5:30)
     # 10:00 AM IST  = 04:30 UTC
