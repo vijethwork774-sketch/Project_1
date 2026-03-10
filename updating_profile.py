@@ -87,20 +87,29 @@ def run(playwright: Playwright) -> None:
     page.goto("https://www.naukri.com/nlogin/login", wait_until="domcontentloaded", timeout=30000)
     page.wait_for_timeout(3000)  # wait for JS to render login form
 
-    # Take screenshot to debug what CI sees
-    page.screenshot(path="login_page.png")
-    print(f"📸 Screenshot saved: login_page.png")
-    print(f"🌐 Current URL: {page.url}")
+    # --- DIAGNOSTICS: log what CI actually sees ---
+    print(f"🌐 Current URL : {page.url}")
+    print(f"📄 Page title  : {page.title()}")
+    all_inputs = page.locator("input").all()
+    print(f"🔍 Input fields found: {len(all_inputs)}")
+    for i, inp in enumerate(all_inputs):
+        try:
+            print(f"   [{i}] type={inp.get_attribute('type')} | name={inp.get_attribute('name')} | placeholder={inp.get_attribute('placeholder')} | id={inp.get_attribute('id')}")
+        except Exception:
+            pass
+    page.screenshot(path="login_page.png", full_page=True)
+    print("📸 Screenshot saved: login_page.png")
+    # --- END DIAGNOSTICS ---
 
     # 2. Wait for email field then fill credentials
     email_input = page.locator("input[placeholder*='Email'], input[type='email'], input[name*='email'], input[id*='email']").first
     email_input.wait_for(state="visible", timeout=30000)
     email_input.fill(NAUKRI_EMAIL)
 
-
     password_input = page.locator("input[placeholder*='Password'], input[type='password']").first
     password_input.wait_for(state="visible", timeout=15000)
     password_input.fill(NAUKRI_PASSWORD)
+
 
     # 3. Click Login button
     page.locator("button[type='submit'], button:has-text('Login')").first.click()
