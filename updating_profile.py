@@ -56,42 +56,72 @@ def send_email(success: bool, detail: str = ""):
 def run(playwright: Playwright) -> None:
     # Auto-detect: headless in GitHub Actions (CI=true), visible locally
     is_ci = os.environ.get("CI", "false").lower() == "true"
+
     browser = playwright.chromium.launch(
         headless=is_ci,
-        slow_mo=0 if is_ci else 500  # slow_mo helps you see what's happening locally
+        slow_mo=0 if is_ci else 500,
+        args=[
+            "--disable-blink-features=AutomationControlled",  # hide headless flag
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+        ]
     )
-    context = browser.new_context()
+
+    # Use a real browser user-agent so Naukri doesn't detect automation
+    context = browser.new_context(
+        user_agent=(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/122.0.0.0 Safari/537.36"
+        ),
+        viewport={"width": 1280, "height": 800},
+        locale="en-IN",
+    )
     page = context.new_page()
 
-    # 1. Go to login page
-    page.goto("https://www.naukri.com/nlogin/login")
+    # Hide webdriver property to avoid bot detection
+    page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
-    # 2. Fill in credentials from environment variables
-    page.get_by_role("textbox", name="Enter Email ID / Username").fill(NAUKRI_EMAIL)
-    page.get_by_role("textbox", name="Enter Password").fill(NAUKRI_PASSWORD)
+    # 1. Go to login page and wait for full network idle
+    page.goto("https://www.naukri.com/nlogin/login", wait_until="networkidle", timeout=30000)
+
+    # 2. Wait for email field then fill credentials
+    email_input = page.locator("input[placeholder*='Email'], input[type='email']").first
+    email_input.wait_for(state="visible", timeout=30000)
+    email_input.fill(NAUKRI_EMAIL)
+
+    password_input = page.locator("input[placeholder*='Password'], input[type='password']").first
+    password_input.wait_for(state="visible", timeout=15000)
+    password_input.fill(NAUKRI_PASSWORD)
 
     # 3. Click Login button
-    page.get_by_role("button", name="Login", exact=True).click()
+    page.locator("button[type='submit'], button:has-text('Login')").first.click()
 
-    # 4. Wait for login to complete (profile image confirms we are logged in)
-    page.get_by_role("img", name="naukri user profile img").wait_for(state="visible", timeout=15000)
+    # 4. Wait for login to complete
+    page.wait_for_load_state("domcontentloaded", timeout=20000)
+    page.wait_for_timeout(2000)  # let session cookie settle
+    print("✅ Logged in successfully")
 
-    # 5. Navigate directly to profile page (avoids flaky dropdown clicks)
-    page.goto("https://www.naukri.com/mnjuser/profile")
+    # 5. Navigate directly to profile page
+    page.goto("https://www.naukri.com/mnjuser/profile", wait_until="domcontentloaded", timeout=30000)
+    page.wait_for_timeout(2000)  # let the page render fully
 
-    # 6. Wait for the "Update resume" button to appear on the profile page
-    page.get_by_role("button", name="Update resume").wait_for(state="visible", timeout=15000)
+    # 6. Wait for the "Update resume" button
+    update_btn = page.locator("button:has-text('Update resume'), input[value='Update resume']").first
+    update_btn.wait_for(state="visible", timeout=20000)
 
     # 7. Click "Update resume" and intercept the file chooser popup
     with page.expect_file_chooser() as fc_info:
-        page.get_by_role("button", name="Update resume").click()
+        update_btn.click()
 
     # 8. Upload the resume file from the repo
     file_chooser = fc_info.value
     file_chooser.set_files(RESUME_PATH)
+    print(f"📄 Resume file set: {RESUME_PATH}")
 
-    # 9. Wait 5 seconds to let the file upload complete over the network
-    page.wait_for_timeout(5000)
+    # 9. Wait for upload to complete
+    page.wait_for_timeout(6000)
 
     context.close()
     browser.close()
