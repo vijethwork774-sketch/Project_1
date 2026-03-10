@@ -1,10 +1,10 @@
 name: Update Naukri Resume
 
 on:
-  # Trigger on every push to master branch
+  # Trigger on every push to main branch
   push:
     branches:
-      - master
+      - main
 
   schedule:
     # Runs 3 times daily in IST (UTC+5:30)
@@ -12,25 +12,30 @@ on:
     - cron: "30 4 * * *"
     # 1:00 PM IST = 07:30 UTC
     - cron: "30 7 * * *"
-    # 3:00 PM IST  = 09:30 UTC
-    - cron: "30 9 * * *"
+    # 3:30 PM IST  = 10:00 UTC
+    - cron: "0 10 * * *"
 
   # Allow manual trigger from GitHub Actions tab
   workflow_dispatch:
 
 jobs:
   update-resume:
-    runs-on: self-hosted  # Runs on YOUR PC — bypasses Naukri's cloud IP block
+    runs-on: ubuntu-latest  # GitHub-hosted cloud runner (free)
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install dependencies
-        run: pip install -r reuirements.txt
+        run: pip install -r requirements.txt
 
       - name: Install Playwright browsers
-        run: playwright install chromium
+        run: playwright install chromium --with-deps
 
       - name: Run Naukri profile updater
         env:
@@ -38,6 +43,7 @@ jobs:
           NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          CI: "true"
         run: python updating_profile.py
 
       # Upload screenshots so we can debug what the browser saw
@@ -48,4 +54,3 @@ jobs:
           name: debug-screenshots
           path: "*.png"
           if-no-files-found: ignore
-
