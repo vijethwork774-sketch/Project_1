@@ -1,0 +1,41 @@
+name: Update Naukri Resume
+
+on:
+  schedule:
+    # Runs 3 times daily in IST (UTC+5:30)
+    # 10:00 AM IST  = 04:30 UTC
+    - cron: "30 4 * * *"
+    # 1:00 PM IST = 07:30 UTC
+    - cron: "30 7 * * *"
+    # 3:00 PM IST  = 09:30 UTC
+    - cron: "30 9 * * *"
+
+  # Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  update-resume:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r reuirements.txt
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      - name: Run Naukri profile updater
+        env:
+          NAUKRI_EMAIL: ${{ secrets.NAUKRI_EMAIL }}
+          NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python updating_profile.py
