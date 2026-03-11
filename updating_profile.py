@@ -296,3 +296,4 @@ except Exception as e:
     print(f"❌ Error: {e}")
     send_email(success=False, detail=str(e))
     raise
+
